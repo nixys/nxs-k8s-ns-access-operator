@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"k8s.io/api/core/v1"
-	"k8s.io/api/rbac/v1beta1"
+	v1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
@@ -63,6 +63,7 @@ func (c *nsController) run(stopCh <-chan struct{}, wg *sync.WaitGroup) {
 }
 
 func (c *nsController) createRoleBinding(obj interface{}) {
+
 	nsObj := obj.(*v1.Namespace)
 	nsName := nsObj.Name
 
@@ -71,7 +72,12 @@ func (c *nsController) createRoleBinding(obj interface{}) {
 
 	if result != nil {
 
-		roleBinding := &v1beta1.RoleBinding{
+		if len(result) < 2 {
+			log.Printf("Wrong ns regular expression result: can't extract username from ns name")
+			return
+		}
+
+		roleBinding := &rbacv1.RoleBinding{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "RoleBinding",
 				APIVersion: "rbac.authorization.k8s.io/v1beta1",
@@ -80,24 +86,25 @@ func (c *nsController) createRoleBinding(obj interface{}) {
 				Name:      fmt.Sprintf("auto-ns-edit"),
 				Namespace: nsName,
 			},
-			Subjects: []v1beta1.Subject{
-				v1beta1.Subject{
+			Subjects: []rbacv1.Subject{
+				{
 					Kind: "User",
 					Name: result[1],
 				},
 			},
-			RoleRef: v1beta1.RoleRef{
+			RoleRef: rbacv1.RoleRef{
 				APIGroup: "rbac.authorization.k8s.io",
 				Kind:     "ClusterRole",
 				Name:     c.clusterRoleName,
 			},
 		}
 
-		_, err := c.k8sClient.RbacV1beta1().RoleBindings(nsName).Create(roleBinding)
+		_, err := c.k8sClient.RbacV1().RoleBindings(nsName).Create(roleBinding)
 		if err != nil {
 			log.Printf("Can't create RoleBinding '%s' in namespace '%s': %s", roleBinding.Name, nsName, err.Error())
-		} else {
-			log.Printf("Created RoleBinding '%s' in Namespace: %s", roleBinding.Name, nsName)
+			return
 		}
+
+		log.Printf("Created RoleBinding '%s' in Namespace: %s", roleBinding.Name, nsName)
 	}
 }
