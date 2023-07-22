@@ -1,3 +1,7 @@
+# DEPRECATED
+
+This repository is considered deprecated and will be archived. For the new version of this tool please go to [nxs-rbac-operator](https://github.com/nixys/nxs-rbac-operator) project.
+
 # nxs-k8s-ns-access-operator
 
 It is the Kubernetes operator to the automatically create the role binding to specific user for created namespaces with the names satisfied to the flollowing format: `$APP_NAME-msvc-$MICROSEVICE_NAME-$BRANCH_NAME` (using regexp: `^(.*)-msvc-.*$`).
